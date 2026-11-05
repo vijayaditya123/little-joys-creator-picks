@@ -17,8 +17,8 @@ Rules (from the brief):
 Run from the repo root:  python src/step3_winning_patterns.py
 
 Outputs:
-  outputs/winning_patterns.csv    one row per label value, all metrics
-  outputs/winning_patterns_summary.md    plain-English summary of kept findings
+  intermediate/winning_patterns.csv    one row per label value, all metrics
+  intermediate/winning_patterns_summary.md    plain-English summary of kept findings
 """
 
 import os

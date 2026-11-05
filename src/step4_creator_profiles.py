@@ -27,7 +27,7 @@ Risk flags (from the brief):
 
 Run from the repo root:  python src/step4_creator_profiles.py
 
-Output: outputs/creator_profiles.csv
+Output: intermediate/creator_profiles.csv
 """
 
 import os

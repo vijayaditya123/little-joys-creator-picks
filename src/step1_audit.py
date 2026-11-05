@@ -7,8 +7,8 @@ and a manual label check.
 Run from the repo root:  python src/step1_audit.py
 
 Outputs:
-  outputs/data_audit.md        the audit report
-  outputs/label_check.csv      15 ads to review by hand (fill in 'reviewed' and 'error_noted')
+  intermediate/data_audit.md        the audit report
+  intermediate/label_check.csv      15 ads to review by hand (fill in 'reviewed' and 'error_noted')
 
 Re-run after filling label_check.csv: the report then shows the real error rate.
 """
