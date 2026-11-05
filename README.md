@@ -23,7 +23,7 @@ The task: use the brand's own data to pick 5 creators and write a brief for each
 
 ```bash
 # 1. Clone the repo and install dependencies
-git clone https://github.com/YOUR_USERNAME/little-joys-creator-picks.git
+git clone https://github.com/vijayaditya123/little-joys-creator-picks.git
 cd little-joys-creator-picks
 pip install -r requirements.txt
 
