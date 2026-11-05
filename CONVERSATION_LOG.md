@@ -305,6 +305,40 @@ prompt used and the answer/actions taken.
 
 ---
 
+## Turn 14
+
+**User prompt:**
+> Run from the repo root:  python src/step3_winning_patterns.py
+> Outputs:
+>   outputs/winning_patterns.csv    one row per label value, all metrics
+>   outputs/winning_patterns_summary.md    plain-English summary of kept findings
+> """ this file will save in termediate not the output
+
+**Assistant answer:**
+Confirmed the step3 docstring still said `outputs/` while the code writes to
+`intermediate/`, and fixed it. Then swept all of `src/` for the same stale
+pattern and fixed three more docstrings:
+- `step3` — `winning_patterns.csv`, `winning_patterns_summary.md` → `intermediate/`
+- `step1` — `data_audit.md`, `label_check.csv` → `intermediate/`
+- `step4` — `creator_profiles.csv` → `intermediate/`
+
+Left `step6`'s `outputs/briefs.md` references unchanged (briefs.md is the real
+final deliverable). (step2 and step5 docstrings had already been corrected in
+Turns 8 and 6.) Documentation-only edits; compiled the three files to confirm no
+breakage. All six step files now have docstrings that match where they write.
+
+---
+
+## Turn 15
+
+**User prompt:**
+> add the new conversation also in conversation_log.md
+
+**Assistant answer:**
+Appended Turns 14 and 15 to this transcript.
+
+---
+
 ## Files added during the session
 
 - `src/pick_logic.py` — `pick_top5` + `is_regional`
@@ -315,7 +349,7 @@ prompt used and the answer/actions taken.
 
 ## Files modified
 
-- `src/step2_ad_metrics.py`, `src/step3_winning_patterns.py`,
+- `src/step1_audit.py`, `src/step2_ad_metrics.py`, `src/step3_winning_patterns.py`,
   `src/step4_creator_profiles.py`, `src/step5_scoring.py`, `src/step6_briefs.py`
 - `README.md`, `architecture.html`, `.gitignore`
 
