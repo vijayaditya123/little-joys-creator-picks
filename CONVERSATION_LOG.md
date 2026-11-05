@@ -1,29 +1,24 @@
-# Conversation Log — Little Joys Creator Picks Code Review & Fixes
+# Conversation Log — Little Joys Creator Picks
 
-_Session date: 2026-11-05. A working log of the end-to-end code review and the
-fixes applied to the pipeline, written as a record of what was asked, what was
-found, and what was changed._
-
----
-
-## Session overview
-
-The user asked for an end-to-end review of the `little-joys-creator-picks`
-pipeline against the Galvor take-home problem statement, then requested a series
-of scoped fixes. Each fix was implemented, verified, and reported. The problem
-statement: _"Which 5 of these 20 creators should Little Joys work with next, and
-what should each of them say?"_ — answered from the brand's own data.
+_Session date: 2026-11-05. Turn-by-turn record of the prompts given and the
+answers/actions taken during the code review and fixes. User prompts are quoted
+verbatim; assistant answers are summarised with the concrete outcomes._
 
 ---
 
-## 1. End-to-end code review
+## Turn 1
 
-Read the problem statement (`.docx`) and all source files (`step1`–`step6`,
-plus outputs and docs). Overall verdict: solid, well-structured pipeline for the
-problem size; visible weighted score + bootstrap CIs is the right call over ML
-for 100 ads / 20 creators.
+**User prompt:**
+> "C:\Users\vijay\Downloads\Galvor tech intern take-home assignment.docx" it is
+> problem statement and please review the code end to end
 
-Issues found (ranked):
+**Assistant answer:**
+Read the problem statement from the `.docx` and reviewed every source file
+(`step1`–`step6`, outputs, docs). Gave an end-to-end review.
+
+- Overall verdict: solid, well-structured pipeline; visible weighted score +
+  bootstrap CIs is the right choice over ML for 100 ads / 20 creators.
+- Raised 8 issues, ranked by severity:
 
 | # | Severity | Issue | File |
 |---|---|---|---|
@@ -36,57 +31,75 @@ Issues found (ranked):
 | 7 | Low | `.env` present — confirm not tracked before pushing | .env |
 | 8 | Low | Unused packages in requirements.txt | requirements.txt |
 
-**Correction from the user:** the pipeline's folder convention is
-`intermediate/` for working files and `outputs/` for final deliverables. The
-initial review wrongly assumed everything went to `outputs/`. (This later turned
-out to be only partly true in the code — see fix in section 7.)
+---
+
+## Turn 2
+
+**User prompt:**
+> FOR the first issue the audit and other files are result are in the
+> intermediate and the final output will be in outputs
+
+**Assistant answer:**
+Re-checked the actual file paths. Found every script read/wrote to `outputs/`
+in the code at that time, with no `intermediate/` in any script path — so the
+original "issue 1" framing was partly wrong and acknowledged. Noted the
+`intermediate/` folder could confuse a reviewer and suggested a README note.
+(This folder convention was properly enforced later in Turn 7.)
 
 ---
 
-## 2. Fix: stress test now applies the variety rules
+## Turn 3
 
-**Problem:** the main picks applied two variety rules (max 2 per persona, at
-least 1 regional-language creator), but the 500-iteration stress test picked the
-top 5 by score alone (`stress_scores.nlargest(5)`), so stability % did not
-reflect the real selection.
+**User prompt:**
+> When I pick my final 5 creators, I follow two rules: no more than 2 creators of
+> the same persona, and at least 1 creator who posts in a regional language. But
+> in the stress test, I pick the top 5 by score only (stress_scores.nlargest(5))
+> and I do not use these two rules. ... Please fix it:
+> 1. Make one function pick_top5(scores, meta) ... both rules ... returns 5 ids.
+> 2. Use this same function for the main picks and inside every stress-test loop.
+> 3. Save raw_top5_rate and final_pick_rate per creator.
+> 4. Show both numbers in the output and report.
+> 5. Fixed random seed.
+> Before changing anything else, check pick_top5 gives the same 5 as current
+> picks. Add a test with 6 toy creators. Show old vs new stability, especially
+> CR-12. Explain final_pick_rate; label variety picks vs score picks.
 
-**Changes:**
-- Extracted selection into `pick_top5(scores, meta)` + `is_regional(lang)` in a
-  new module `src/pick_logic.py` (importable without triggering a CSV load).
-- `step5` imports from it; main picks and every stress iteration use the same
-  function (rules live in one place).
-- Stress test records two metrics per creator: `raw_top5_rate` (score-only top 5)
-  and `final_pick_rate` (final 5 after variety rules). Added a `pick_type` label
-  (`score_pick` / `variety_pick` / `not_picked`).
+**Assistant answer:**
+- Extracted `pick_top5(scores, meta)` + `is_regional(lang)` into
+  `src/pick_logic.py` (importable without a CSV load). `step5` imports from it;
+  main picks and every stress iteration call the same function.
+- Stress test now records `raw_top5_rate` and `final_pick_rate` per creator, plus
+  a `pick_type` label. Fixed seed 42 preserved.
 - Added `tests/test_pick_top5.py` (6 tests, all pass).
-
-**Verification:** `pick_top5` reproduced the same 5 picks. For all 20 creators
-`raw_top5_rate == final_pick_rate` — the variety rules never bind with the data/
-weights, so every pick is a `score_pick`. **CR-12 is a genuine score pick at
-45.4%, not a variety pick** — disproving the original concern.
-
-Old vs new stability (identical, as expected): CR-11 100, CR-05 99.6, CR-17 71.0,
-CR-10 67.4, CR-12 45.4.
+- Verified `pick_top5` reproduced the same 5 picks before proceeding.
+- **Finding:** for all 20 creators `raw_top5_rate == final_pick_rate` — the
+  variety rules never bind with this data/weights, so every pick is a
+  `score_pick`. **CR-12 is a genuine score pick at 45.4%, not a variety pick** —
+  directly disproving the concern. Old vs new numbers identical.
 
 ---
 
-## 3. Fix: `product_form` removed as a creative label
+## Turn 4
 
-**Problem:** `product_form` was in `SINGLE_LABELS` but is also the scope-splitter
-(gummies vs milk_mix_powder). Comparing it as a label ("gummies vs non-gummies")
-is meaningless — it is a product attribute, not a creative choice.
+**User prompt:**
+> There is a problem in src/step3_winning_patterns.py. "product_form" is in
+> SINGLE_LABELS but it is also the scope splitter ... fix it:
+> 1. Remove "product_form" from SINGLE_LABELS.
+> 2. Keep using product_form to split scopes.
+> 3. Add a context table (n ads, median ROAS, median cost per purchase) labelled
+>    "Context: product form (not a creative pattern)" before the label results.
+> 4. Add a report line that product form is a scope, not a creative pattern.
+> 5. Check nothing else treats product_form as a creative label; tell me first.
+> Show labels before/after and whether any finding changed.
 
-**Changes:**
-- Removed `"product_form"` from `SINGLE_LABELS` (with an explanatory comment).
-- Kept it as the scope splitter.
-- Added a "Context: product form (not a creative pattern)" table (n ads, median
-  ROAS, median cost per purchase per product form) before the label results.
-- Added a report line stating product form is analysed as a scope, not a pattern.
-
-**Verification:** `product_form` now yields 0 rows in results. Labels analysed
-went from 13 → 12. **No other finding changed** (each label is compared
-independently). step6's use of `product_form` (to filter reference ads per
-product) is legitimate and was left unchanged.
+**Assistant answer:**
+- Removed `"product_form"` from `SINGLE_LABELS` (with a comment); kept it as the
+  scope splitter.
+- Added the context table (console + report) and the explanatory report line.
+- Checked other usages: step3 scopes (legitimate) and step6 reference-ad filter
+  (legitimate) — nothing else treats it as a creative label; left unchanged.
+- **Result:** `product_form` now yields 0 rows. Labels went 13 → 12. **No other
+  finding changed** (labels are compared independently).
 
 Context table:
 
@@ -98,160 +111,228 @@ Context table:
 
 ---
 
-## 4. Fix: `pattern_score` now reads winning_patterns.csv
+## Turn 5
 
-**Problem:** the 0–4 `pattern_score` was a hard-coded re-encoding of Step 3's
-signals; it did not read `winning_patterns.csv`, so re-running Step 3 with
-different labels/thresholds would not change it, and two of its four signals
-(reach, sponsored experience) were not Step 3 patterns at all (they double-counted
-Step 5 dimensions).
+**User prompt:**
+> There is a problem in src/step4_creator_profiles.py. The 0-4 pattern_score is
+> hard-coded ... does not read winning_patterns.csv. Fix it:
+> 1. Show current code and the kept patterns first; don't change yet.
+> 2. Add a visible mapping dict (Step 3 pattern -> creator-side column).
+> 3. pattern_score reads winning_patterns.csv; only kept patterns count.
+> 4. Warn for kept patterns with no mapping (don't skip silently).
+> 5. If winning_patterns.csv missing, stop with an error (no fallback).
+> 6. Max comes from number of mapped patterns, not fixed 4; update "0-4" text.
+> 7. Add a test with 3 kept + 1 weak pattern.
+> Run Step 4 and show old vs new pattern_score for all 20; explain changes.
 
-**Changes:**
-- Added a visible `PATTERN_MAP` dict (one commented line per mapping) connecting
-  each Step 3 pattern `(label_col, label_val)` to a creator-side check.
-- `pattern_score` now reads `winning_patterns.csv`; only kept patterns
-  (`signal != weak_signal`) that have a mapping contribute. Max is dynamic
-  (`MAX_PATTERN_SCORE`), written to the profile as `pattern_score_max`.
-- Loud warning for every kept-but-unmapped pattern.
-- Missing-file guard: if `winning_patterns.csv` is absent, stop with "Run Step 3
-  first" — no fallback to hard-coded values.
-- step5 normalises by the actual max instead of `/ 4.0`; "0–4" text updated.
+**Assistant answer:**
+- Showed the current hard-coded 4 signals and all 14 kept patterns first.
+- Added a visible `PATTERN_MAP` dict (one commented line per mapping).
+- `pattern_score` now reads `winning_patterns.csv`; only kept + mapped patterns
+  count. Loud warnings for the 9 kept-but-unmapped patterns.
+- Missing-file guard added (stops with "Run Step 3 first"; no fallback).
+- Dynamic `MAX_PATTERN_SCORE` written as `pattern_score_max`; step5 normalises by
+  the real max; "0–4" text updated.
 - Added `tests/test_pattern_score.py` (5 tests, all pass).
-
-**Key honest finding:** `MAX_PATTERN_SCORE` collapsed from 4 to **1** because
-(a) `language` is not a kept pattern (every language value is weak; `language=Hindi`
-has a negative ROAS delta), and (b) the five child patterns collapse to one
-observable creator signal (children on camera ≥40%). All 20 pattern_scores
-changed. **The picks changed:** new top 5 = CR-05, CR-11, CR-16, CR-12, CR-17
-(CR-16 in, CR-10 out). This was flagged to the user as a real consequence.
+- **Key honest finding:** `MAX_PATTERN_SCORE` collapsed 4 → **1** because
+  `language` is not a kept pattern (negative ROAS delta for Hindi) and the five
+  child patterns collapse to one observable signal. All 20 scores changed.
+  **The picks changed:** new top 5 = CR-05, CR-11, CR-16, CR-12, CR-17 (CR-16 in,
+  CR-10 out). Flagged this to the user as a real consequence to decide on.
 
 ---
 
-## 5. Fix: `weighted_score` upper clamp + docstring
+## Turn 6
 
-**Problem:** the score clamped the lower bound to 0.0 but not the upper bound to
-1.0.
+**User prompt:**
+> weighted_score clamps the lower bound to 0.0 but not the upper bound to 1.0 ...
+> 1. Check whether any score can go above 1.0 (base or stress). Show max. Don't
+>    change yet.
+> 2. Add min(1.0, ...) and a docstring line (range 0-1, penalties fixed).
+> 3. Run base picks and stress before/after; confirm identical. Stop if changed.
+> 4. Add a stability-section sentence: stress varies weights/threshold; penalties
+>    held fixed.
 
-**Check first (no change):** proved no score can exceed 1.0 — weights sum to 1,
-all dimensions in [0,1], penalty only subtracts. Base max 0.7046; max across base
-+ all 500 stress iterations 0.8396. Never exceeds 1.0.
-
-**Changes:** added `min(1.0, ...)` as a defensive guarantee; docstring states
-the 0–1 range and that risk penalties are fixed (not varied in the stress test).
-Added a stability-section sentence: _"The stress test varies the scoring weights.
-The ad spend threshold and the risk penalties are held fixed."_
-
-**Verification:** picks and all `final_pick_rate`/`raw_top5_rate` numbers
-identical before vs after (as expected — the ceiling was never reached).
+**Assistant answer:**
+- Checked first (no change): proved no score can exceed 1.0. Base max 0.7046; max
+  across base + all 500 stress iterations 0.8396.
+- Added `min(1.0, ...)` and a docstring stating the 0–1 range and fixed penalties.
+- Added the stability sentence (worded accurately: the stress test varies the
+  scoring weights; the ad spend threshold and risk penalties are held fixed).
+- **Verified picks and all rates identical before vs after** (ceiling never
+  reached).
 
 ---
 
-## 6. Fix: pipeline folder rule (the step6 crash)
+## Turn 7
 
-**Problem:** step5 read/wrote to `OUTPUT_DIR`; step6 read `ranking.csv`,
-`stability.csv`, `ad_metrics.csv` from `OUTPUT_DIR` — but `ad_metrics.csv` only
-exists in `INTER_DIR`, so step6 crashed.
+**User prompt:**
+> There is a crash in my pipeline. Step 6 reads its input files from the wrong
+> folder ... I want ONE rule: every step writes/reads working files to
+> intermediate/; only final deliverables to outputs/. ...
+> 1. List every read/write and its folder; don't change yet.
+> 2. Step 5 writes ranking/stability to intermediate/.
+> 3. Step 6 reads ranking/stability/ad_metrics from intermediate/; only briefs.md
+>    to outputs/.
+> 4. Fix every other path that breaks the rule; tell me each change.
+> 5. Ensure os.makedirs for each step.
+> 6. Test from zero: delete intermediate/ and outputs/, run 1-6; show outputs/
+>    has only deliverables.
+> 7. Add a README section stating the folder rule.
 
-**Rule enforced:** every step reads inputs from and writes working files to
-`intermediate/`; only final deliverables go to `outputs/`.
-
-**Changes:**
-- step5: reads `creator_profiles.csv` and writes `ranking.csv`/`stability.csv` to
-  `intermediate/`.
-- step6: reads all three inputs from `intermediate/`; writes `briefs.md` to
+**Assistant answer:**
+- Gave the full I/O audit table (steps 1–4 already compliant; step5 + step6 were
+  the problem; step6's missing `ad_metrics.csv` in OUTPUT_DIR was the crash).
+- step5 → `intermediate/` for reads and writes.
+- step6 → reads all three inputs from `intermediate/`; writes `briefs.md` to
   `outputs/`; `decisions.md` stays in `ai_log/`.
 - Fixed a redundant `stability` merge in step6 that collided with the
-  `final_pick_rate` column now present in `ranking.csv` (a correctness fix the
-  path migration exposed).
-- README run-comments and repo structure corrected; added a "Folder Rule" section.
-- Steps all `os.makedirs(..., exist_ok=True)` for the folders they need.
-
-**Verification:** from-zero run completed steps 1–5 into `intermediate/`; step6's
-original crash is gone (all three inputs load). A new, unrelated blocker surfaced:
-`KeyError: 'CR-16'` in step6's hand-curated `CREATOR_META` (CR-16 became a pick
-after the pattern_score fix) — fixed in section 8.
+  `final_pick_rate` column now in `ranking.csv` (correctness fix the migration
+  exposed).
+- Fixed README run-comments + repo structure; added a "Folder Rule" section.
+- From-zero run: steps 1–5 completed into `intermediate/`; step6's original crash
+  is gone. New unrelated blocker surfaced: `KeyError: 'CR-16'` in the hand-curated
+  `CREATOR_META` (fixed in Turn 9).
 
 ---
 
-## 7. Five small cleanup items
+## Turn 8
 
-1. **ALLOWED_CLAIMS → runtime evidence table + AVOID_CLAIMS.** step6 now builds
-   `intermediate/claim_evidence.csv` (353 claims with n_ads + median ROAS) at
-   runtime. Added a hand-written `AVOID_CLAIMS` list (doctor-recommended,
-   immunity/health claims for children, guarantees, growth promises) that
-   overrides the evidence table. `check_claims` returns `unverified` and `avoid`
-   lists and prints creator-named warnings. Rationale: a winning ad can contain a
-   claim that is unsafe to repeat, so the allow-list must not be auto-built from
-   top-ROAS ads alone.
-2. **Stale `outputs/ad_metrics.csv`.** Confirmed no code reads it; fixed the stale
-   step2 docstring. The file itself is locked by OneDrive and must be deleted
-   manually.
-3. **Column validation in step6.** Added a required-columns guard across
-   ranking.csv / stability.csv / ad_metrics.csv that stops with a clear message.
-   Confirmed `is_pick` matches between step5 write and step6 read.
-4. **.gitignore.** Added `.pytest_cache/` (`__pycache__/`, `*.pyc` already present).
-   Not a git repo, so nothing tracked to untrack.
-5. **architecture.html chips.** All chips show `intermediate/` for working files
-   and `outputs/` for deliverables, plus a folder-rule note in the legend.
+**User prompt (five cleanup items):**
+> 1. ALLOWED_CLAIMS is hardcoded and goes stale. Show current list and the
+>    claims_made values (claim, n ads, median ROAS) first. Then build the claim
+>    evidence table at runtime and save to intermediate/. Keep a hand-written
+>    AVOID_CLAIMS list (doctor-recommended + child health claims). Don't build the
+>    allowed list only from top-ROAS ads. Warn, naming creator and claim.
+> 2. Delete stale outputs/ad_metrics.csv (search for any read first).
+> 3. Check is_pick matches; add a required-column check at the start of Step 6.
+> 4. Add __pycache__/, .pytest_cache/, *.pyc to .gitignore; untrack if tracked.
+> 5. Update architecture.html chips to show intermediate/ vs outputs/.
+> At the end, run 1-6 from zero; confirm the final 5 picks are the same.
+
+**Assistant answer:**
+1. Showed the current `ALLOWED_CLAIMS` and the 353 unique `claims_made` values
+   (with n_ads + median ROAS). Replaced the hardcoded list with a runtime claim
+   evidence table saved to `intermediate/claim_evidence.csv`, plus a hand-written
+   `AVOID_CLAIMS` list (doctor/immunity/health/guarantee claims) that overrides
+   it. `check_claims` now returns `unverified` + `avoid` lists and prints
+   creator-named warnings.
+2. Confirmed no code reads `outputs/ad_metrics.csv`; fixed the stale step2
+   docstring. The file itself is locked by OneDrive — must be deleted manually.
+3. Added a required-columns guard across all three inputs; confirmed `is_pick`
+   matches between step5 write and step6 read.
+4. Added `.pytest_cache/` (`__pycache__/`, `*.pyc` already present). Not a git
+   repo, so nothing tracked to untrack.
+5. Updated all architecture.html chips to show `intermediate/` vs `outputs/`,
+   plus a folder-rule note.
+
+Fresh from-zero run was disrupted by OneDrive file locking and the CR-16 blocker.
+
+---
+
+## Turn 9
+
+**User prompt:**
+> yes  (approving: finish the from-zero run + add a CR-16 safe fallback in step6)
+
+**Assistant answer:**
+- Added `default_meta(cid)` in step6 so any pick without a hand-written
+  `CREATOR_META` entry gets safe defaults (product = milk-mix, risk/swap =
+  "NEEDS REVIEW") and a printed warning — no invented marketing copy. Fixed the
+  `KeyError: 'CR-16'`.
+- Also removed a stray " yes" string accidentally injected into the CREATOR_META
+  CR-12 entry (would have been a syntax error).
+- Ran steps 1–5 individually (all persisted); step6 completed all 5 briefs in a
+  full run ("Briefs saved" / "AI log saved"). Confirmed the final 5 picks via the
+  deterministic ranking.csv.
+- Flagged two environment limitations (not code defects): OneDrive clearing/
+  locking files between commands, and Groq free-tier rate limiting step6's LLM
+  calls intermittently.
+
+**Final 5 picks (confirmed):**
+
+| # | Creator | fit_score | final_pick_rate | pick_type |
+|---|---|---|---|---|
+| 1 | @sia_3vedi (CR-05) | 0.7046 | 99.8% | score_pick |
+| 2 | @raja_choudhary04 (CR-11) | 0.6435 | 100.0% | score_pick |
+| 3 | @paediatrics_decoded (CR-16) | 0.5883 | 81.8% | score_pick |
+| 4 | @raising_zohran (CR-12) | 0.5521 | 61.6% | score_pick |
+| 5 | @radhikabansal0908 (CR-17) | 0.5397 | 46.6% | score_pick |
 
 ---
 
-## 8. CR-16 fallback (defensive, no invented marketing)
+## Turn 10
 
-Added `default_meta(cid)` in step6 so any pick without a hand-written
-`CREATOR_META` entry gets safe defaults (product = milk-mix powder, risk/swap =
-"NEEDS REVIEW") and a printed warning. This fixed the `KeyError: 'CR-16'`.
-step6 ran all 5 briefs to completion with this in place ("Briefs saved" / "AI log
-saved"). Also removed a stray " yes" string that had been accidentally injected
-into the `CREATOR_META` CR-12 entry (would have been a syntax error).
+**User prompt:**
+> can please save the complete conversion in md file
+
+**Assistant answer:**
+Created `CONVERSATION_LOG.md` summarising the session.
+
+---
+
+## Turn 11
+
+**User prompt:**
+> please add the test file in gitignore
+
+**Assistant answer:**
+Added `tests/` and `_*.py` (scratch files) to `.gitignore`, and flagged that
+git-ignoring the real unit tests may not be ideal for a take-home submission
+since reviewers value visible tests.
 
 ---
 
-## Final state
+## Turn 12
 
-**Final 5 picks (deterministic, confirmed stable):**
+**User prompt:**
+> put the files issue.md in gitigore
 
-| # | Creator | Followers | fit_score | final_pick_rate | pick_type |
-|---|---|---|---|---|---|
-| 1 | @sia_3vedi (CR-05) | 2.8M | 0.7046 | 99.8% | score_pick |
-| 2 | @raja_choudhary04 (CR-11) | 197k | 0.6435 | 100.0% | score_pick |
-| 3 | @paediatrics_decoded (CR-16) | 263k | 0.5883 | 81.8% | score_pick |
-| 4 | @raising_zohran (CR-12) | 22.7k | 0.5521 | 61.6% | score_pick |
-| 5 | @radhikabansal0908 (CR-17) | 396k | 0.5397 | 46.6% | score_pick |
-
-**Tests:** 11 pass (6 `test_pick_top5` + 5 `test_pattern_score`). All changed
-scripts compile.
-
-**Files added:** `src/pick_logic.py`, `tests/test_pick_top5.py`,
-`tests/test_pattern_score.py`, `ISSUES.md`, this log.
-
-**Files modified:** `src/step2_ad_metrics.py`, `src/step3_winning_patterns.py`,
-`src/step4_creator_profiles.py`, `src/step5_scoring.py`, `src/step6_briefs.py`,
-`README.md`, `architecture.html`, `.gitignore`.
-
-**Constraints honoured throughout:** no changes to scoring weights, the ad spend
-threshold, the variety rules, or analysis logic beyond what each fix explicitly
-required. Weights/threshold/penalties left as-is.
+**Assistant answer:**
+Added `ISSUES.md` to `.gitignore` under an "Internal working docs" section.
 
 ---
+
+## Turn 13
+
+**User prompt:**
+> in the conversion_log.md we need to add the conversion of this season what was
+> your answer what promt i used
+
+**Assistant answer:**
+Rewrote this file as the turn-by-turn transcript above — each turn shows the
+prompt used and the answer/actions taken.
+
+---
+
+## Files added during the session
+
+- `src/pick_logic.py` — `pick_top5` + `is_regional`
+- `tests/test_pick_top5.py` — 6 tests
+- `tests/test_pattern_score.py` — 5 tests
+- `ISSUES.md` — internal issue tracker
+- `CONVERSATION_LOG.md` — this file
+
+## Files modified
+
+- `src/step2_ad_metrics.py`, `src/step3_winning_patterns.py`,
+  `src/step4_creator_profiles.py`, `src/step5_scoring.py`, `src/step6_briefs.py`
+- `README.md`, `architecture.html`, `.gitignore`
+
+## Constraints honoured throughout
+
+No changes to scoring weights, the ad spend threshold, the variety rules, or
+analysis logic beyond what each requested fix required.
 
 ## Known environment limitations (not code defects)
 
-- **OneDrive sync** on the project folder intermittently locked/cleared files in
-  `intermediate/` between separate command invocations, preventing a clean
-  single from-zero verification. Each step succeeded individually and the full
-  pipeline completed in a single uninterrupted session; running from a
-  non-OneDrive local folder would remove this instability.
-- **Groq free-tier rate limiting** caused step6's LLM calls to fail intermittently
-  after many test runs. The code path is correct (step6 completed all 5 briefs
-  earlier in the session); the failures are API quota, not logic.
-- **`outputs/ad_metrics.csv`** is a locked stale leftover to delete manually once
-  OneDrive releases it. No code reads or writes it anymore.
+- OneDrive sync intermittently locked/cleared files in `intermediate/` between
+  commands.
+- Groq free-tier rate limiting caused step6's LLM calls to fail intermittently.
+- `outputs/ad_metrics.csv` is a locked stale leftover to delete manually.
 
 ## Recommended next actions
 
-- Add a CR-16 entry to `CREATOR_META` (product, risk note, swap note) or revert to
-  the earlier pick set — a human decision, not auto-generated.
-- Optionally add retry/backoff around the Groq call in step6 so transient API
-  failures do not abort the run.
+- Add a CR-16 entry to `CREATOR_META`, or revert to the earlier pick set.
+- Optionally add retry/backoff around the Groq call in step6.
 - Run the pipeline from a non-OneDrive local folder for a clean end-to-end pass.
