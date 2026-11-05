@@ -1,0 +1,23 @@
+# API keys — never commit these
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+.pytest_cache/
+
+# Tests
+tests/
+
+# Temporary scratch files
+_*.py
+
+# Internal working docs (not for the public repo)
+ISSUES.md
+
+# OS
+.DS_Store
+Thumbs.db

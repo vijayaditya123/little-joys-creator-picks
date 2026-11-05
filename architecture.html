@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Little Joys — Creator Selection Architecture</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2b2f3d;
+    --accent: #6ee7b7;
+    --accent2: #60a5fa;
+    --llm: #f0abfc;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 40px 20px;
+    line-height: 1.5;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 40px;
+    font-size: 15px;
+  }
+  .flow {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .stage {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 22px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .stage.llm { border-left-color: var(--llm); }
+  .stage.io  { border-left-color: var(--accent2); background: #141821; }
+  .stage-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .stage-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: #233027;
+    color: var(--accent);
+    border: 1px solid #2f4738;
+  }
+  .badge.llm { background: #2d2435; color: var(--llm); border-color: #4a3756; }
+  .badge.io  { background: #1c2535; color: var(--accent2); border-color: #2f4267; }
+  .stage p { color: var(--muted); font-size: 14px; }
+  .io-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .chip {
+    font-size: 12px;
+    font-family: "SF Mono", Consolas, monospace;
+    background: #0c0e14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--text);
+  }
+  .chip.out { color: var(--accent); border-color: #2f4738; }
+  .arrow {
+    width: 2px;
+    height: 28px;
+    background: linear-gradient(var(--border), var(--accent));
+    position: relative;
+  }
+  .arrow::after {
+    content: "▼";
+    position: absolute;
+    bottom: -6px;
+    left: -6px;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .legend {
+    max-width: 920px;
+    margin: 40px auto 0;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+  <h1>Little Joys — Creator Selection Pipeline</h1>
+  <p class="subtitle">From raw brand data to 5 creator picks + what each should say</p>
+
+  <div class="flow">
+
+    <!-- INPUT -->
+    <div class="stage io">
+      <div class="stage-head">
+        <span class="stage-title">Raw Data (input)</span>
+        <span class="badge io">4 CSV FILES</span>
+      </div>
+      <p>The brand's own data — ads, creators, posts, audience.</p>
+      <div class="io-row">
+        <span class="chip">ads.csv</span>
+        <span class="chip">creators.csv</span>
+        <span class="chip">creator_posts.csv</span>
+        <span class="chip">creator_audience.csv</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 1 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-title">Step 1 — Data Audit</span>
+        <span class="badge">pandas</span>
+      </div>
+      <p>Shapes, missing values, duplicates, hidden likes, cross-file mismatches, manual label check.</p>
+      <div class="io-row">
+        <span class="chip out">intermediate/data_audit.md</span>
+        <span class="chip out">intermediate/label_check.csv</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 2 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-title">Step 2 — Ad Metrics</span>
+        <span class="badge">pandas</span>
+      </div>
+      <p>ROAS, cost per purchase, hook rate, hold rate, CTR, conversion rate. Flag low-spend ads.</p>
+      <div class="io-row">
+        <span class="chip out">intermediate/ad_metrics.csv</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 3 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-title">Step 3 — Winning Patterns</span>
+        <span class="badge">stats + bootstrap</span>
+      </div>
+      <p>Compare each ad label in-group vs out-group. Bootstrap CIs. Run for all / gummies / milk-mix. Child-led ads win (ROAS +1.02).</p>
+      <div class="io-row">
+        <span class="chip out">intermediate/winning_patterns.csv</span>
+        <span class="chip out">intermediate/winning_patterns_summary.md</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 4 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-title">Step 4 — Creator Profiles</span>
+        <span class="badge">pandas</span>
+      </div>
+      <p>Median plays, reshare rate, child-on-camera %, language, risk flags. The
+      pattern score is built from Step 3's winning_patterns.csv via a PATTERN_MAP
+      (not hard-coded), so it stays in sync if Step 3 changes.</p>
+      <div class="io-row">
+        <span class="chip">reads intermediate/winning_patterns.csv</span>
+        <span class="chip out">intermediate/creator_profiles.csv</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 5 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-title">Step 5 — Score, Pick 5, Stress Test</span>
+        <span class="badge">weighted score</span>
+      </div>
+      <p>Weighted fit score (visible weights) minus risk penalty. Selection + variety
+      rules live in <code>pick_logic.py</code> (unit-tested) and are used for both the
+      main picks and every one of the 500 stress-test iterations.</p>
+      <div class="io-row">
+        <span class="chip out">intermediate/ranking.csv</span>
+        <span class="chip out">intermediate/stability.csv</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- STEP 6 -->
+    <div class="stage llm">
+      <div class="stage-head">
+        <span class="stage-title">Step 6 — Creator Briefs</span>
+        <span class="badge llm">GROQ LLM</span>
+      </div>
+      <p>For each of the 5 picks, the LLM drafts: concept, opening line, talking points,
+      claim to avoid, caption. Allowed claims are built at runtime from the ad data
+      (claim_evidence.csv); a claim-checker flags any invented number or unsafe claim
+      and logs it.</p>
+      <div class="io-row">
+        <span class="chip">reads intermediate/ranking.csv + stability.csv + ad_metrics.csv</span>
+        <span class="chip out">intermediate/claim_evidence.csv</span>
+        <span class="chip out">outputs/briefs.md</span>
+        <span class="chip out">ai_log/decisions.md</span>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <!-- OUTPUT -->
+    <div class="stage io">
+      <div class="stage-head">
+        <span class="stage-title">Final Deliverables (output)</span>
+        <span class="badge io">FOR THE MANAGER</span>
+      </div>
+      <p>The answer and the briefs, written for Little Joys' marketing manager.</p>
+      <div class="io-row">
+        <span class="chip">answer_for_manager.md</span>
+        <span class="chip">briefs.md</span>
+        <span class="chip">README.md</span>
+        <span class="chip">NOTE.md</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--accent)"></span> Pure data / stats (no AI)</span>
+    <span><span class="dot" style="background:var(--llm)"></span> LLM step (Groq) — the only AI use</span>
+    <span><span class="dot" style="background:var(--accent2)"></span> Input / output boundary</span>
+  </div>
+
+  <p style="max-width:760px;margin:16px auto 0;color:#9aa;font-size:13px;line-height:1.5;text-align:center">
+    Folder rule: every step writes its working files to <code>intermediate/</code>
+    and reads its inputs from there. Only final deliverables
+    (<code>outputs/briefs.md</code>, <code>outputs/answer_for_manager.md</code>)
+    go to <code>outputs/</code>. The AI correction log lives in <code>ai_log/</code>.
+  </p>
+
+</body>
+</html>
